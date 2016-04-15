@@ -13,19 +13,21 @@ static NSString *const kDefaultTimeZone = @"America/Los_Angeles";
 @interface AppDelegate ()
 @property NSStatusItem *statusItem;
 @property NSTimer *timer;
-@property NSTimeZone *timeZone;
+@property NSDateFormatter *dateFormatter;
 @end
 
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-  self.timeZone = [NSTimeZone timeZoneWithName:kDefaultTimeZone];
+  self.dateFormatter = [[NSDateFormatter alloc] init];
+  self.dateFormatter.dateFormat = @"HH:mm";
+  self.dateFormatter.timeZone = [NSTimeZone timeZoneWithName:kDefaultTimeZone];
   self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
   self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
-                                          target:self
-                                        selector:@selector(refreshDate)
-                                        userInfo:nil
-                                         repeats:YES];
+                                                target:self
+                                              selector:@selector(refreshDate)
+                                              userInfo:nil
+                                               repeats:YES];
 
   NSMenu *popUpMenu = [[NSMenu alloc] init];
   for (NSString *zone in [NSTimeZone knownTimeZoneNames]) {
@@ -40,15 +42,13 @@ static NSString *const kDefaultTimeZone = @"America/Los_Angeles";
 }
 
 - (void)refreshDate {
-  NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-  [dateFormatter setTimeZone:self.timeZone];
-  [dateFormatter setDateFormat:@"HH:mm"];
-  self.statusItem.button.title = [dateFormatter stringFromDate:[NSDate date]];
+  self.statusItem.button.title = [self.dateFormatter stringFromDate:[NSDate date]];
 }
 
 - (void)rootMenu:(NSMenu *)root tzArray:(NSArray *)array tzString:(NSString *)string {
-  NSString *sanitisedString = [array[0] stringByReplacingOccurrencesOfString:@"_" withString:@" "];
-  if ([array count] > 1) {
+  NSString *sanitisedString = [[array firstObject] stringByReplacingOccurrencesOfString:@"_"
+                                                                             withString:@" "];
+  if (array.count > 1) {
     NSMenuItem *existingMenuItem = [root itemWithTitle:sanitisedString];
     NSMenu *newRootMenu;
     if (!existingMenuItem) {
@@ -62,7 +62,7 @@ static NSString *const kDefaultTimeZone = @"America/Los_Angeles";
       newRootMenu = existingMenuItem.submenu;
     }
     [self rootMenu:newRootMenu
-           tzArray:[array subarrayWithRange:NSMakeRange(1, [array count]-1)]
+           tzArray:[array subarrayWithRange:NSMakeRange(1, array.count - 1)]
           tzString:string];
   } else {
     NSMenuItem *menuItem = [[NSMenuItem alloc] init];
@@ -71,8 +71,8 @@ static NSString *const kDefaultTimeZone = @"America/Los_Angeles";
     menuItem.target = self;
     menuItem.action = @selector(changeTimeZone:);
     [root addItem:menuItem];
-    
-    if ([self.timeZone.name isEqualToString:string]) {
+
+    if ([self.dateFormatter.timeZone.name isEqualToString:string]) {
       menuItem.state = NSOnState;
     }
   }
@@ -81,7 +81,7 @@ static NSString *const kDefaultTimeZone = @"America/Los_Angeles";
 - (IBAction)changeTimeZone:sender {
   [self clearAllStates:self.statusItem.menu];
   [sender setState:NSOnState];
-  self.timeZone = [NSTimeZone timeZoneWithName:[sender representedObject]];
+  self.dateFormatter.timeZone = [NSTimeZone timeZoneWithName:[sender representedObject]];
 }
 
 - (void)clearAllStates:(NSMenu *)rootMenu {
